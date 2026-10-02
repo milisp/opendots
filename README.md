@@ -1,6 +1,8 @@
 # opendots
 
-Opensource OpenAI dots alternative
+Opensource OpenAI dots and Grok bot alternative
+
+- [GitHub Releases](https://modern-github-release/#/repo/milisp/opendots)
 
 ![opendots](https://github.com/user-attachments/assets/11b8e1f9-6133-4221-8722-6429edb53c7f)
 
