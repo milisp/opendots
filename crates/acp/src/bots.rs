@@ -361,9 +361,6 @@ impl crate::AcpState {
     }
 
     fn emit_bot(&self, bot_id: &str, session_id: &str, status: &str) {
-        match status {
-            _ => {}
-        }
         self.sink().emit(
             BOT_EVENT,
             json!({ "botId": bot_id, "sessionId": session_id, "status": status }),

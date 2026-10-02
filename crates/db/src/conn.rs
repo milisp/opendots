@@ -64,10 +64,10 @@ fn add_column_if_missing(
     definition: &str,
 ) -> Result<(), String> {
     let sql = format!("ALTER TABLE {table} ADD COLUMN {column} {definition}");
-    if let Err(error) = conn.execute(&sql, []) {
-        if !error.to_string().contains("duplicate column name") {
-            return Err(error.to_string());
-        }
+    if let Err(error) = conn.execute(&sql, [])
+        && !error.to_string().contains("duplicate column name")
+    {
+        return Err(error.to_string());
     }
     Ok(())
 }
