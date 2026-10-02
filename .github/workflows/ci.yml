@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ci.yml"
+      - "src/**"
+      - "src-tauri/**"
+      - "crates/**"
+      - "web/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "package.json"
+
+env:
+  TAURI_BUNDLE: all
+
+jobs:
+  rust-checks:
+    runs-on: ubuntu-latest
+    name: Rust clippy & tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libasound2-dev
+
+      # Pinned so new stable releases can't add clippy lints and break CI unannounced; bump deliberately.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.0
+          components: clippy
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "dots"
+
+      # tauri::generate_context! expects frontendDist to exist; the Rust checks don't need real assets.
+      - name: Create placeholder frontend dist
+        run: mkdir -p dist
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --locked
+
+  build-linux:
+    needs: rust-checks
+    # Skip full Tauri build for fork PRs — secrets are unavailable and signing would fail.
+    # rust-checks above already covers cargo check / clippy / tests.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    name: Build Linux x86_64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libasound2-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.0
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "dots"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun i
+
+      - name: Build Tauri App
+        run: bun tauri build --bundles deb
