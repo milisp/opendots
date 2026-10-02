@@ -34,21 +34,12 @@ export function BotModelFields({
   const configOptions = catalogue.map((option) => ({
     ...option,
     currentValue: option.category === 'thought_level' ? reasoningEffort : model,
-    options: [
-      { value: '', name: "keke's default", description: 'Whatever ~/.keke/config.toml selects' },
-      ...(option.options ?? []),
-    ],
+    options: option.options ?? [],
   }));
 
-  // A bot inherits keke's own `config.toml` choice unless it overrides one, so
-  // the provider row must be able to go back to "no override" — signing in is
-  // keke's business, not a bot setting.
-  const authMethods = catalogueAuthMethods.length
-    ? [
-        { id: '', name: "keke's default", description: 'Whatever ~/.keke/config.toml selects' },
-        ...catalogueAuthMethods,
-      ]
-    : [];
+  // The user must pick a provider and model explicitly; no "keke's default"
+  // escape hatch is offered, and neither field starts out selected.
+  const authMethods = catalogueAuthMethods;
 
   const known = authMethods.length > 0 || configOptions.length > 0 || models !== null;
 
@@ -78,8 +69,8 @@ export function BotModelFields({
               onReasoningEffortChange(effort ?? '');
             }}
             accountLabel="Provider"
-            noAccountLabel="keke's default"
-            placeholder="keke's default"
+            noAccountLabel="Select a provider"
+            placeholder="Select a model"
             triggerClassName="flex max-w-full items-center gap-1 truncate rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
           />
         </div>
