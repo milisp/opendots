@@ -2,6 +2,8 @@
 
 Opensource OpenAI dots alternative
 
+![opendots](https://github.com/user-attachments/assets/11b8e1f9-6133-4221-8722-6429edb53c7f)
+
 ## Development
 
 Tauri hosts the React web application. Bot functionality is served by a local Axum HTTP API on an OS-assigned loopback port. API operations do not use Tauri commands. Tauri native plugins are only used for shell conveniences such as folder selection and desktop notifications.
