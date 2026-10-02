@@ -7,6 +7,7 @@ import { useBotUiStore } from '@/stores/useBotUiStore';
 import { BotAvatar } from './BotAvatar';
 import { BotSessionList } from './BotSessionList';
 import { BotSettingsDialog } from './BotSettingsDialog';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { defaultLook, newBotId } from './botDefaults';
 import { markBotRead } from './markBotRead';
 import { useBotSession } from './useBotSession';
@@ -149,6 +150,12 @@ export function SideBarBotPane({ onSelect }: { onSelect?: () => void }) {
             {selectedBotId === bot.id && <BotSessionList bot={bot} />}
           </div>
         ))}
+      </div>
+
+      <div className="p-2 border-t border-border">
+        <div className="flex justify-end">
+          <ThemeToggle />
+        </div>
       </div>
 
       {newBot && (
