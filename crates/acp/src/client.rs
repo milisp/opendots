@@ -362,10 +362,19 @@ impl AcpClient {
         self.request(method, params).await
     }
 
+    /// Make `method_id` the route this connection's new sessions open against.
+    ///
+    /// `persist: false` keeps the choice to this process. Opendots runs one
+    /// keke per bot, each on its own provider, so letting keke write the route
+    /// (and its first model) to `config.toml` would have every bot and probe
+    /// overwrite the user's own default. An older keke ignores the flag.
     pub async fn authenticate(&self, method_id: &str) -> Result<(), String> {
-        self.request("authenticate", json!({ "methodId": method_id }))
-            .await
-            .map(|_| ())
+        self.request(
+            "authenticate",
+            json!({ "methodId": method_id, "_meta": { "persist": false } }),
+        )
+        .await
+        .map(|_| ())
     }
 
     /// Send a user turn. Resolves when the agent finishes the turn; streamed

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AcpChoiceMenu } from '@/components/acp/AcpChoiceMenu';
 import { Label } from '@/components/ui/label';
 import { useBotOptionsStore } from '@/stores/useBotOptionsStore';
-import { probeProviderModels } from './probeProviderModels';
+import { ProviderNotSignedInError, probeProviderModels } from './probeProviderModels';
 
 interface BotModelFieldsProps {
   /** Working directory keke is opened in to list a provider's models. */
@@ -50,18 +50,22 @@ export function BotModelFields({
   const known = authMethods.length > 0;
   const noModels = configOptions.length === 0 && models === null;
 
-  // A provider keke has never been asked about is probed once; a failed probe
-  // is not retried on every render.
-  const [probing, setProbing] = useState(false);
+  // A provider keke has never been asked about is probed when it is picked.
+  // The effect only reruns when its inputs change, so a failed probe is not
+  // retried in a loop, but picking another provider and coming back tries again.
+  const [failure, setFailure] = useState<{ provider: string; signIn: boolean } | null>(null);
   const probed = useRef(new Set<string>());
   useEffect(() => {
     if (!provider || !noModels || !cwd || probed.current.has(provider)) return;
     probed.current.add(provider);
-    setProbing(true);
-    probeProviderModels(provider, cwd)
-      .catch((e) => console.warn(`bot: could not list models for ${provider}`, e))
-      .finally(() => setProbing(false));
+    setFailure(null);
+    probeProviderModels(provider, cwd).catch((e) => {
+      console.warn(`bot: could not list models for ${provider}`, e);
+      probed.current.delete(provider);
+      setFailure({ provider, signIn: e instanceof ProviderNotSignedInError });
+    });
   }, [provider, noModels, cwd]);
+  const failed = failure?.provider === provider ? failure : null;
 
   return (
     <div className="space-y-1">
@@ -103,9 +107,11 @@ export function BotModelFields({
           </div>
           {provider && noModels && (
             <p className="text-xs text-muted-foreground">
-              {probing || !probed.current.has(provider)
-                ? 'Loading models…'
-                : "Could not list this provider's models. Check that you are signed in to it."}
+              {failed?.signIn
+                ? 'Not signed in to this provider. Run `keke login` for it, then pick it again.'
+                : failed
+                  ? "Could not list this provider's models."
+                  : 'Loading models…'}
             </p>
           )}
         </>
