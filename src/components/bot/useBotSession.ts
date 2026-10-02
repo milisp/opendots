@@ -228,7 +228,7 @@ export function useBotSession() {
       }
       // Remember what keke offers, so a bot that has never run can still be
       // configured from a list rather than typed-in provider/model strings.
-      captureBotOptions(res.initialize, res.session);
+      captureBotOptions(bot.provider, res.initialize, res.session);
 
       if (res.sessionError || !res.sessionId) {
         store.addEntry({

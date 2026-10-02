@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from 'react';
 import { AcpChoiceMenu } from '@/components/acp/AcpChoiceMenu';
 import { Label } from '@/components/ui/label';
 import { useBotOptionsStore } from '@/stores/useBotOptionsStore';
+import { probeProviderModels } from './probeProviderModels';
 
 interface BotModelFieldsProps {
+  /** Working directory keke is opened in to list a provider's models. */
+  cwd: string;
   provider: string;
   onProviderChange: (value: string) => void;
   model: string;
@@ -18,6 +22,7 @@ interface BotModelFieldsProps {
  * the only difference from the composer's copy.
  */
 export function BotModelFields({
+  cwd,
   provider,
   onProviderChange,
   model,
@@ -25,9 +30,12 @@ export function BotModelFields({
   reasoningEffort,
   onReasoningEffortChange,
 }: BotModelFieldsProps) {
-  const catalogueAuthMethods = useBotOptionsStore((s) => s.authMethods);
-  const catalogue = useBotOptionsStore((s) => s.configOptions);
-  const models = useBotOptionsStore((s) => s.models);
+  const authMethods = useBotOptionsStore((s) => s.authMethods);
+  // keke advertises models per provider, so only the picked provider's list
+  // is shown; one this bot has never run on has none yet.
+  const providerCatalogue = useBotOptionsStore((s) => s.byProvider[provider]);
+  const catalogue = providerCatalogue?.configOptions ?? [];
+  const models = providerCatalogue?.models ?? null;
 
   // The catalogue only carries what keke offers; what this bot has chosen
   // lives in the draft, so the current values are grafted on here.
@@ -39,41 +47,68 @@ export function BotModelFields({
 
   // The user must pick a provider and model explicitly; no "keke's default"
   // escape hatch is offered, and neither field starts out selected.
-  const authMethods = catalogueAuthMethods;
+  const known = authMethods.length > 0;
+  const noModels = configOptions.length === 0 && models === null;
 
-  const known = authMethods.length > 0 || configOptions.length > 0 || models !== null;
+  // A provider keke has never been asked about is probed once; a failed probe
+  // is not retried on every render.
+  const [probing, setProbing] = useState(false);
+  const probed = useRef(new Set<string>());
+  useEffect(() => {
+    if (!provider || !noModels || !cwd || probed.current.has(provider)) return;
+    probed.current.add(provider);
+    setProbing(true);
+    probeProviderModels(provider, cwd)
+      .catch((e) => console.warn(`bot: could not list models for ${provider}`, e))
+      .finally(() => setProbing(false));
+  }, [provider, noModels, cwd]);
 
   return (
     <div className="space-y-1">
       <Label>Model</Label>
       {known ? (
-        <div className="flex">
-          <AcpChoiceMenu
-            authMethods={authMethods}
-            selectedAuthMethod={provider}
-            onSelectAuthMethod={onProviderChange}
-            configOptions={configOptions}
-            onConfigOptionChange={(option, value) => {
-              if (typeof value !== 'string') return;
-              if (option.category === 'thought_level') onReasoningEffortChange(value);
-              else {
-                onModelChange(value);
-                // A model switch can invalidate the previous effort level.
+        <>
+          <div className="flex">
+            <AcpChoiceMenu
+              authMethods={authMethods}
+              selectedAuthMethod={provider}
+              onSelectAuthMethod={(value) => {
+                if (value === provider) return;
+                onProviderChange(value);
+                // The previous model belongs to the previous provider.
+                onModelChange('');
                 onReasoningEffortChange('');
-              }
-            }}
-            models={models ? { ...models, currentModelId: model } : null}
-            reasoningEffort={reasoningEffort || null}
-            onModelChange={(modelId, effort) => {
-              onModelChange(modelId);
-              onReasoningEffortChange(effort ?? '');
-            }}
-            accountLabel="Provider"
-            noAccountLabel="Select a provider"
-            placeholder="Select a model"
-            triggerClassName="flex max-w-full items-center gap-1 truncate rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-          />
-        </div>
+              }}
+              configOptions={configOptions}
+              onConfigOptionChange={(option, value) => {
+                if (typeof value !== 'string') return;
+                if (option.category === 'thought_level') onReasoningEffortChange(value);
+                else {
+                  onModelChange(value);
+                  // A model switch can invalidate the previous effort level.
+                  onReasoningEffortChange('');
+                }
+              }}
+              models={models ? { ...models, currentModelId: model } : null}
+              reasoningEffort={reasoningEffort || null}
+              onModelChange={(modelId, effort) => {
+                onModelChange(modelId);
+                onReasoningEffortChange(effort ?? '');
+              }}
+              accountLabel="Provider"
+              noAccountLabel="Select a provider"
+              placeholder="Select a model"
+              triggerClassName="flex max-w-full items-center gap-1 truncate rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+            />
+          </div>
+          {provider && noModels && (
+            <p className="text-xs text-muted-foreground">
+              {probing || !probed.current.has(provider)
+                ? 'Loading models…'
+                : "Could not list this provider's models. Check that you are signed in to it."}
+            </p>
+          )}
+        </>
       ) : (
         <p className="text-xs text-muted-foreground">
           Open a bot's chat once so keke can report the accounts and models it offers — the picker
